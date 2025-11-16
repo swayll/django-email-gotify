@@ -3,6 +3,7 @@ from typing import override
 
 from django.conf import settings
 from django.core.mail.backends.base import BaseEmailBackend
+from django.core.mail.message import EmailMessage
 from gotify import Gotify
 
 
@@ -33,14 +34,18 @@ class GotifyMessage(BaseEmailBackend):
             raise e
         return None
 
-    def write_message(self, message):
+    def write_message(self, message, subject):
         return self.gotify.create_message(
             message=str(message.body),
-            title=str(message.subject),
+            if isinstance(message, EmailMessage)
+            else str(message),
+            title=str(message.subject)
+            if isinstance(message, EmailMessage)
+            else str(subject),
         )
 
     @override
-    def send_messages(self, email_messages):
+    def send_messages(self, email_messages, subject="Subject"):
         if not email_messages:
             return 0
         msg_count = 0
@@ -48,7 +53,7 @@ class GotifyMessage(BaseEmailBackend):
             try:
                 self.open()
                 for message in email_messages:
-                    self.write_message(message)
+                    self.write_message(message, subject)
                     msg_count += 1
             except Exception as e:
                 if not self.fail_silently:
